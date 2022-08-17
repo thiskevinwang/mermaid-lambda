@@ -1,0 +1,9 @@
+{
+  "args": [
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--single-process",
+    "--no-zygote",
+    "--no-sandbox"
+  ]
+}
