@@ -24,14 +24,14 @@ app "mermaid" {
   # From a separate AWS CDK stack, I reuse this ECR image, and create a brand new Lambda function, 
   # managed by the AWS CDK stack.
 
-  // deploy {
-  //   use "aws-lambda" {
-  //     region = var.region
-  //     memory = 1024
-  //     static_environment = {
-  //     }
-  //   }
-  // }
+  deploy {
+    use "aws-lambda" {
+      region = var.region
+      memory = 1024
+      static_environment = {
+      }
+    }
+  }
 
   // release {
   //   use "lambda-function-url" {
