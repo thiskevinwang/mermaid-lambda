@@ -109,7 +109,13 @@ func mmdcSvg(w http.ResponseWriter, r *http.Request) {
 	// 	w.Header().Set("Cache-Control", "public, max-age=31536000")
 	// }
 	w.Header().Set("Content-Type", "text/plain")
-	// w.Header().Set("Content-Type", "image/svg")
+
+	// set this header for CORS here
+	// This addresses an error:
+	// When Hard-refreshing on Chrome, the initial requests to CloudFront don't
+	// get the correct response headers, and result in a CORs error.
+	w.Header().Set("access-control-allow-origin", "*")
+	w.Header().Set("content-type", "image/svg+xml")
 	w.Write([]byte(res))
 }
 
