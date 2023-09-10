@@ -22,6 +22,14 @@ sequenceDiagram
     participant CL as Client
     participant FU as Function URL
     participant LM as Lambda
+
+    CL->>FU: GET
+    activate FU
+        FU->>+LM: Origin Request
+            Note over LM: Run Container via ECR image
+        LM->>-FU: Rsponse
+        FU->>CL: Response
+    deactivate FU
 ```
 
 ### Full
