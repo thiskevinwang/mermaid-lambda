@@ -38,8 +38,6 @@ func mmdcSvg(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		input = string(body)
-		// base64 encode body for cache key
-		b64input = base64.StdEncoding.EncodeToString(body)
 	case "GET":
 		b64input = query.Get("input")
 		// reject empty input
@@ -47,12 +45,10 @@ func mmdcSvg(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "No input", http.StatusBadRequest)
 			return
 		}
+
 		// "+" in querystring becomes whitespace.
 		// We should replace it back to "+" to ensure it can be base64 decoded.
 		b64input = strings.Replace(b64input, " ", "+", -1)
-
-		// WARN this may be redundant as we need to URL encode a request to a Lambda Function URL anyways
-		// Presence of "=" in the URL returns 400, {"message": null}
 
 		// decode base64 input
 		if b64decoded, err := base64.StdEncoding.DecodeString(b64input); err != nil {
@@ -65,38 +61,33 @@ func mmdcSvg(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	key := fmt.Sprintf("%s::%s", b64input, theme)
-	fmt.Println("hash key:", key)
-
-	mmdcPath := "./node_modules/.bin/mmdc"
-	__dirname, err := os.Getwd()
-	if err != nil {
+	// The path to the mermaid CLI executable
+	//
+	// WARN: when executing the mmdc bin, `node` is required!
+	var binPath string
+	if dirname, err := os.Getwd(); err != nil {
 		log.Fatal("failed to get working dir", err)
+	} else {
+		binPath = filepath.Join(dirname, "./node_modules/.bin/mmdc")
 	}
 
-	binPath := filepath.Join(__dirname, mmdcPath)
+	// /tmp is AWS Lambda's writeable tmp dir
+	var outputFile string = "/tmp/output.png"
 
-	// WARN — when executing the mmdc bin, `node` is required!
+	// Base Mermaid CLI command
+	cmd := exec.Command(binPath, "-o", outputFile, "-p", "puppeteer-config.json", "-t", theme, "-b", "transparent")
 
-	// How to pipe string to command?
-	// https://stackoverflow.com/a/49901167/9823455
-
-	var outputFile string = "/tmp/output.svg"
-	var cmd *exec.Cmd
-
-	cmd = exec.Command(binPath, "-o", outputFile, "-p", "puppeteer-config.json", "-t", theme, "-b", "transparent")
-
+	// Pipe stdin to the mermaid CLI:
+	// How-to in Go: https://stackoverflow.com/a/49901167/9823455
 	cmd.Stdin = strings.NewReader(input)
+
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 
-	fmt.Println("Executing:", cmd.String())
 	if err := cmd.Run(); err != nil {
 		log.Fatal("command failed: ", err)
 	}
-	fmt.Println("Command finished")
 
-	fmt.Println("Sending file to client")
 	svg, err := os.ReadFile(outputFile)
 	if err != nil {
 		log.Fatal("failed to read outfile: ", err)
@@ -104,12 +95,15 @@ func mmdcSvg(w http.ResponseWriter, r *http.Request) {
 
 	res := string(svg)
 
-	// if GET, set cache headers for 1 year
-	// if r.Method == "GET" {
-	// 	w.Header().Set("Cache-Control", "public, max-age=31536000")
-	// }
-	w.Header().Set("Content-Type", "text/plain")
-	// w.Header().Set("Content-Type", "image/svg")
+	// Set header for CORS here
+	//
+	// When Hard-refreshing on Chrome, the initial requests to CloudFront don't
+	// get the correct response headers, and result in a CORs error.
+	w.Header().Set("access-control-allow-origin", "*")
+
+	// w.Header().Set("content-type", "image/svg+xml")
+	w.Header().Set("content-type", "text/plain")
+
 	w.Write([]byte(res))
 }
 
