@@ -1,5 +1,7 @@
 # mermaid-lambda
 
+Mermaid.js as a service — see https://thekevinwang.com/wiki/meta/mermaid for examples.
+
 ## Intended usage
 
 This repository is meant to build an OCI image, using Docker.
